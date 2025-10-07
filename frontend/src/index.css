@@ -1,0 +1,39 @@
+body {
+  font-family: "Poppins", "Segoe UI", sans-serif;
+  background-color: #f4f4f9;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3 {
+  color: #3b3b98;
+  letter-spacing: 0.5px;
+}
+
+nav {
+  background: #2d3436;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+nav a {
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+nav a:hover {
+  color: #ffb347;
+}
+
+input, button {
+  font-family: inherit;
+}
+
+button {
+  transition: background 0.3s ease, transform 0.1s ease;
+}
+
+button:hover {
+  background: #575fcf;
+  transform: scale(1.03);
+}
