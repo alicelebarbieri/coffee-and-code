@@ -1,52 +1,49 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "./firebase";
+
+// Pages
 import Home from "./pages/Home";
 import CreateEvent from "./pages/CreateEvents";
-import logo from "./assets/logo.png"; 
-import AuthButton from "./components/AuthButton";
 import MyEvents from "./pages/MyEvents";
 import EditEvent from "./pages/EditEvent";
+import EventDetails from "./pages/EventDetails";
+
+// UI
+import NavbarTop from "./components/NavBar";
 
 function App() {
-  return (
-    <div>
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "1rem 2rem",
-          background: "#2d3436",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <img src={logo} alt="Coffee & Code logo" width="35" height="35" />
-          <h2 style={{ color: "white", margin: 0 }}>Coffee & Code</h2>
-        </div>
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <Link style={{ color: "white", textDecoration: "none" }} to="/">
-            Home
-          </Link>
-          <Link style={{ color: "white", textDecoration: "none" }} to="/create">
-            + Create Event
-          </Link>
-          <Link style={{ color: "white", textDecoration: "none" }} to="/myevents">
-            My Events
-          </Link>
-          <AuthButton />
-        </div>
-      </nav>
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthReady(true);
+    });
+    return unsub;
+  }, []);
+
+  // Evita flicker enquanto o Firebase responde
+  if (!authReady) return null;
+
+  return (
+    <div className="min-vh-100 bg-dark text-light">
+      {/* Navbar SEMPRE fora do <Routes/> */}
+      <NavbarTop user={user} onLogout={() => signOut(auth)} />
 
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/create" element={<CreateEvent />} />
-        <Route path="/myevents" element={<MyEvents />} />
+        {/* rotas que exigem login */}
+        {user && <Route path="/create" element={<CreateEvent />} />}
+        {user && <Route path="/myevents" element={<MyEvents />} />}
+        {/* rotas públicas */}
         <Route path="/edit/:id" element={<EditEvent />} />
+        <Route path="/event/:id" element={<EventDetails />} />
       </Routes>
     </div>
   );
 }
 
 export default App;
-

@@ -1,157 +1,194 @@
-import { Calendar, MapPin, PoundSterling, Trash2, Edit3 } from "lucide-react";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { deleteDoc, doc } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import { useNavigate } from "react-router-dom";
+import MapPreview from "./MapPreview";
+import {
+  Calendar,
+  MapPin,
+  Video,
+  PoundSterling,
+  Star,
+  UsersRound,
+  Edit3,
+  Trash2,
+} from "lucide-react";
 
-function EventCard({ event }) {
-  const navigate = useNavigate();
-
-  const formattedDate = event.date
-    ? new Date(event.date).toLocaleDateString("en-GB")
-    : "No date";
-
-  const calendarDate = event.date
-    ? new Date(event.date).toISOString().split("T")[0].replace(/-/g, "")
-    : "";
-
-  const handleAddToCalendar = () => {
-    const title = encodeURIComponent(event.title);
-    const location = encodeURIComponent(event.location);
-    const details = encodeURIComponent("Join us at Coffee & Code ☕!");
-    const startDate = calendarDate;
-    const endDate = calendarDate;
-
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}&location=${location}`;
-    window.open(url, "_blank");
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm("Delete this event?")) return;
-
-    try {
-      await deleteDoc(doc(db, "events", event.id));
-      alert("🗑️ Event deleted successfully!");
-      window.location.reload(); // atualiza a página rapidamente
-    } catch (error) {
-      console.error("Error deleting event:", error);
-      alert("Failed to delete event. Check console for details.");
-    }
-  };
-
-  const handleEdit = () => {
-    navigate(`/edit/${event.id}`);
-  };
-
+function Stars({ value = 0 }) {
+  const full = Math.round(value ?? 0);
   return (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: "12px",
-        padding: "1.5rem",
-        background: "#fff",
-        boxShadow: "0 4px 8px rgba(0,0,0,0.08)",
-        transition: "transform 0.2s ease",
-        textAlign: "center",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.02)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1.0)")}
-    >
-      {/* 🖼️ Event image */}
-      {event.imageUrl && (
-        <img
-          src={event.imageUrl}
-          alt={event.title}
-          style={{
-            width: "100%",
-            maxHeight: "200px",
-            objectFit: "cover",
-            borderRadius: "10px",
-            marginBottom: "1rem",
-          }}
+    <div className="d-inline-flex align-items-center" title={`${value ?? 0} / 5`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          size={16}
+          className={i < full ? "text-warning" : "text-secondary"}
+          fill={i < full ? "currentColor" : "none"}
         />
-      )}
-
-      {/* 📋 Event info */}
-      <h3 style={{ marginBottom: "0.6rem", color: "#3b3b98" }}>
-        {event.title}
-      </h3>
-
-      <p style={{ margin: "0.4rem 0" }}>
-        <Calendar size={16} color="#6c5ce7" style={{ marginRight: 5 }} />
-        {formattedDate}
-      </p>
-
-      <p style={{ margin: "0.4rem 0" }}>
-        <MapPin size={16} color="#e17055" style={{ marginRight: 5 }} />
-        {event.location}
-      </p>
-
-      <p style={{ margin: "0.4rem 0" }}>
-        <PoundSterling size={16} color="#0984e3" style={{ marginRight: 5 }} />
-        {event.price || "Free"}
-      </p>
-
-      {/* 📅 Add to Google Calendar */}
-      <button
-        onClick={handleAddToCalendar}
-        style={{
-          background: "#3b3b98",
-          color: "white",
-          border: "none",
-          padding: "0.6rem 1rem",
-          borderRadius: "6px",
-          cursor: "pointer",
-          marginTop: "0.8rem",
-          transition: "background 0.3s ease",
-        }}
-        onMouseEnter={(e) => (e.target.style.background = "#575fcf")}
-        onMouseLeave={(e) => (e.target.style.background = "#3b3b98")}
-      >
-        Add to Google Calendar
-      </button>
-
-      {/* ✏️ Edit & Delete buttons */}
-      {auth.currentUser && auth.currentUser.uid === event.userId && (
-        <div style={{ marginTop: "1rem", display: "flex", gap: "10px", justifyContent: "center" }}>
-          <button
-            onClick={handleEdit}
-            style={{
-              background: "#f9ca24",
-              color: "white",
-              border: "none",
-              padding: "0.5rem 1rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-            }}
-          >
-            <Edit3 size={16} />
-            Edit
-          </button>
-
-          <button
-            onClick={handleDelete}
-            style={{
-              background: "#eb4d4b",
-              color: "white",
-              border: "none",
-              padding: "0.5rem 1rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-            }}
-          >
-            <Trash2 size={16} />
-            Delete
-          </button>
-        </div>
-      )}
+      ))}
     </div>
   );
 }
 
-export default EventCard;
+export default function EventCard({ event }) {
+  const navigate = useNavigate();
+
+  const startISO = useMemo(() => {
+    const start = `${event?.date ?? ""}T${(event?.startTime || "09:00")
+      .toString()
+      .padStart(5, "0")}`;
+    const d = new Date(start);
+    return isNaN(d) ? null : d;
+  }, [event?.date, event?.startTime]);
+
+  const formattedDate =
+    startISO?.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }) ?? "No date";
+
+  const formattedTime =
+    startISO?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) ?? "";
+
+  const handleAddToCalendar = () => {
+    if (!startISO) return;
+    const endISO = new Date(startISO.getTime() + 60 * 60 * 1000);
+
+    const startStr =
+      startISO.toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+    const endStr =
+      endISO.toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+
+    const title = encodeURIComponent(event.title || "Coffee & Code");
+    const details = encodeURIComponent(
+      event.description || "Join us at Coffee & Code ☕💻"
+    );
+    const location = encodeURIComponent(
+      event.isOnline ? "Online" : event.location || "TBA"
+    );
+
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${location}`;
+    window.open(url, "_blank");
+  };
+
+  const handleEdit = () => navigate(`/edit/${event.id}`, { state: event });
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this event?")) return;
+    await deleteDoc(doc(db, "events", event.id));
+    window.location.reload();
+  };
+
+  const goToDetails = () => navigate(`/event/${event.id}`, { state: event });
+
+  const isOwner =
+    !!auth.currentUser?.uid && auth.currentUser.uid === event.userId;
+
+  return (
+    <div className="card h-100 shadow-sm bg-body-tertiary text-body">
+      {/* Imagem */}
+      {event.imageUrl ? (
+        <img
+          src={event.imageUrl}
+          alt={event.title}
+          className="card-img-top"
+          style={{ height: 160, objectFit: "cover" }}
+          onClick={goToDetails}
+          role="button"
+        />
+      ) : (
+        <div
+          className="d-flex align-items-center justify-content-center bg-light text-secondary"
+          style={{ height: 160 }}
+        >
+          No image
+        </div>
+      )}
+
+      <div className="card-body d-flex flex-column">
+        {/* Título */}
+        <h5 className="card-title mb-2 text-truncate" title={event.title}>
+          {event.title}
+        </h5>
+
+        {/* Data / Local */}
+        <div className="small text-muted mb-2 d-flex flex-wrap gap-3">
+          <span className="d-inline-flex align-items-center">
+            <Calendar size={16} className="me-1" />
+            {formattedDate} {formattedTime && `• ${formattedTime}`}
+          </span>
+
+          <span className="d-inline-flex align-items-center">
+            {event.isOnline ? (
+              <>
+                <Video size={16} className="me-1" /> Online
+              </>
+            ) : (
+              <>
+                <MapPin size={16} className="me-1" />
+                {event.location || "TBA"}
+              </>
+            )}
+          </span>
+        </div>
+
+        {/* Preço / Rating / Attendees */}
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className="d-inline-flex align-items-center gap-2">
+            <span className="badge rounded-pill bg-success-subtle text-success-emphasis border border-success-subtle">
+              <PoundSterling size={14} className="me-1" />
+              {event.price || "Free"}
+            </span>
+            <span className="d-inline-flex align-items-center gap-1">
+              <Stars value={event.rating ?? 0} />
+            </span>
+          </div>
+          <span className="d-inline-flex align-items-center text-muted small">
+            <UsersRound size={16} className="me-1" />
+            {event.attendeesCount ?? 0}
+          </span>
+        </div>
+
+        {/* Mapa (opcional) */}
+        {typeof event.lat === "number" &&
+          typeof event.lng === "number" &&
+          !event.isOnline && (
+            <div className="mb-3">
+              <MapPreview lat={event.lat} lng={event.lng} height={160} rounded />
+            </div>
+          )}
+
+        {/* Criado por */}
+        <div className="text-muted small mb-3">
+          Created by <strong>{event.userName || "Anonymous"}</strong>
+        </div>
+
+        {/* Ações */}
+        <div className="mt-auto d-flex flex-wrap gap-2">
+          <button className="btn btn-dark flex-grow-1" onClick={handleAddToCalendar}>
+            Add to Google Calendar
+          </button>
+
+          <button className="btn btn-outline-secondary" onClick={goToDetails}>
+            Details
+          </button>
+
+          {isOwner && (
+            <>
+              <button className="btn btn-warning" onClick={handleEdit}>
+                <Edit3 size={16} className="me-1" />
+                Edit
+              </button>
+              <button className="btn btn-danger" onClick={handleDelete}>
+                <Trash2 size={16} className="me-1" />
+                Delete
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

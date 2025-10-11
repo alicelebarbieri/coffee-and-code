@@ -24,6 +24,95 @@ nav a {
 nav a:hover {
   color: #ffb347;
 }
+body {
+  background: #f7f7fb;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: 0.2px;
+}
+
+.nav-ghost {
+  border-radius: 999px;
+  padding: .45rem .9rem;
+  transition: background .18s ease, color .18s ease, transform .1s ease, box-shadow .18s ease;
+}
+.nav-ghost:hover,
+.nav-ghost:focus {
+  background: var(--bs-body-bg);
+  color: var(--bs-emphasis-color);
+  box-shadow: inset 0 0 0 1px var(--bs-border-color);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+
+.nav-ghost.active {
+  box-shadow: inset 0 0 0 1px var(--bs-primary);
+  color: var(--bs-primary);
+}
+
+
+.hero {
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 50%, #a78bfa 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-mark {
+  position: absolute;
+  right: 2%;
+  bottom: -8%;
+  width: min(40vw, 420px);        
+  opacity: .18;                   
+  filter: drop-shadow(0 10px 30px rgba(0,0,0,.35));
+  pointer-events: none;
+}
+.hero-card {
+  background: #131619; /* ou use o tom do seu dark theme */
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Imagem decorativa do hero */
+.hero-art {
+  position: absolute;
+  right: -10px;           /* puxa um pouco pra fora pra ficar estiloso */
+  bottom: -20px;
+  width: 300px;
+  max-width: 45%;         /* mantém responsivo em telas médias/grandes */
+  opacity: 0.18;          /* não rouba a cena do texto */
+  filter: saturate(90%) contrast(90%);
+  pointer-events: none;   /* evita clique/drag */
+  user-select: none;
+}
+
+
+@media (max-width: 768px) {
+  .hero-art {
+    display: none;
+  }
+}
+
+.card.bg-body-tertiary {
+  border: 0;
+}
+
+
+.card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card {
+  border-radius: 1rem; 
+}
 
 input, button {
   font-family: inherit;
@@ -37,3 +126,4 @@ button:hover {
   background: #575fcf;
   transform: scale(1.03);
 }
+

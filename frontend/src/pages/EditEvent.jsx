@@ -3,9 +3,9 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { db, storage, auth } from "../firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { geocodeAddress } from "../utils/geocode";
 
-function EditEvent() {
-
+export default function EditEvent() {
   const { state: eventFromState } = useLocation();
   const { id: routeId } = useParams();
   const navigate = useNavigate();
@@ -15,17 +15,23 @@ function EditEvent() {
 
   const [title, setTitle] = useState(eventFromState?.title || "");
   const [date, setDate] = useState(eventFromState?.date || "");
+  const [startTime, setStartTime] = useState(eventFromState?.startTime || "09:00");
+  const [isOnline, setIsOnline] = useState(!!eventFromState?.isOnline);
   const [locationV, setLocationV] = useState(eventFromState?.location || "");
   const [price, setPrice] = useState(eventFromState?.price || "");
+  const [description, setDescription] = useState(
+    eventFromState?.description || ""
+  );
+
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(eventFromState?.imageUrl || "");
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!eventFromState); 
+  const [initialLoading, setInitialLoading] = useState(!eventFromState);
   const [error, setError] = useState("");
 
+  // Carrega do Firestore se veio só o id
   useEffect(() => {
     let active = true;
-
     const fetchIfNeeded = async () => {
       if (eventFromState || !eventId) {
         setInitialLoading(false);
@@ -34,23 +40,29 @@ function EditEvent() {
       try {
         const snap = await getDoc(doc(db, "events", eventId));
         if (!snap.exists()) {
-          setError("Event not found.");
-          setInitialLoading(false);
+          if (active) {
+            setError("Event not found.");
+            setInitialLoading(false);
+          }
           return;
         }
         const data = { id: snap.id, ...snap.data() };
         if (!active) return;
+
         setEvent(data);
         setTitle(data.title || "");
         setDate(data.date || "");
+        setStartTime(data.startTime || "09:00");
+        setIsOnline(!!data.isOnline);
         setLocationV(data.location || "");
         setPrice(data.price || "");
+        setDescription(data.description || "");
         setPreview(data.imageUrl || "");
       } catch (err) {
         console.error(err);
-        setError("Failed to load event.");
+        if (active) setError("Failed to load event.");
       } finally {
-        setInitialLoading(false);
+        if (active) setInitialLoading(false);
       }
     };
 
@@ -58,15 +70,11 @@ function EditEvent() {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
+  }, [eventId, eventFromState]);
 
-  
   useEffect(() => {
     return () => {
-      if (preview && preview.startsWith("blob:")) {
-        URL.revokeObjectURL(preview);
-      }
+      if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
     };
   }, [preview]);
 
@@ -82,7 +90,6 @@ function EditEvent() {
     e.preventDefault();
     if (!eventId) return;
 
-   
     if (!auth.currentUser || (event && auth.currentUser.uid !== event.userId)) {
       alert("You can only edit your own events.");
       return;
@@ -90,27 +97,55 @@ function EditEvent() {
 
     setLoading(true);
     try {
-      let imageUrl = preview || "";
+      // imagem
+      let imageUrl =
+        preview && !preview.startsWith("blob:") ? preview : event?.imageUrl || "";
 
-      
       if (imageFile) {
-        
+        const uid = auth.currentUser?.uid || "anon";
         const imageRef = ref(
           storage,
-          `events/${auth.currentUser.uid}/${eventId}-${Date.now()}-${imageFile.name}`
+          `events/${uid}/${eventId}-${Date.now()}-${imageFile.name}`
         );
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
+        const snap = await uploadBytes(imageRef, imageFile, {
+          contentType: imageFile.type,
+        });
+        imageUrl = await getDownloadURL(snap.ref);
       }
 
-      await updateDoc(doc(db, "events", eventId), {
+      // payload base
+      const payload = {
         title,
         date,
+        startTime,
         location: locationV,
+        isOnline,
         price,
+        description: description || "",
         imageUrl,
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      // geocode (presencial)
+      try {
+        if (!isOnline && locationV) {
+          const coords = await geocodeAddress(locationV);
+          if (coords) {
+            payload.lat = coords.lat;
+            payload.lng = coords.lng;
+          } else {
+            payload.lat = null;
+            payload.lng = null;
+          }
+        } else {
+          payload.lat = null;
+          payload.lng = null;
+        }
+      } catch (e1) {
+        console.warn("Geocode failed:", e1);
+      }
+
+      await updateDoc(doc(db, "events", eventId), payload);
 
       alert("Event updated successfully!");
       navigate("/myevents");
@@ -123,7 +158,11 @@ function EditEvent() {
   };
 
   if (initialLoading) {
-    return <p style={{ textAlign: "center", marginTop: "2rem" }}>Loading event...</p>;
+    return (
+      <p style={{ textAlign: "center", marginTop: "2rem" }}>
+        Loading event...
+      </p>
+    );
   }
 
   if (error) {
@@ -133,7 +172,7 @@ function EditEvent() {
   return (
     <div
       style={{
-        maxWidth: "600px",
+        maxWidth: "640px",
         margin: "2rem auto",
         padding: "2rem",
         background: "#f9f9ff",
@@ -155,26 +194,53 @@ function EditEvent() {
           required
         />
 
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
-        />
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+            style={{ flex: 1 }}
+          />
+          <input
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            style={{ width: 140 }}
+          />
+        </div>
 
-        <input
-          type="text"
-          value={locationV}
-          onChange={(e) => setLocationV(e.target.value)}
-          placeholder="Location"
-          required
-        />
+        <label className="d-flex align-items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isOnline}
+            onChange={(e) => setIsOnline(e.target.checked)}
+          />
+          Online event
+        </label>
+
+        {!isOnline && (
+          <input
+            type="text"
+            value={locationV}
+            onChange={(e) => setLocationV(e.target.value)}
+            placeholder="Location"
+            required
+          />
+        )}
 
         <input
           type="text"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           placeholder="Price (or Free)"
+        />
+
+        <textarea
+          placeholder="Event Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
         />
 
         {preview && (
@@ -214,5 +280,3 @@ function EditEvent() {
     </div>
   );
 }
-
-export default EditEvent;
