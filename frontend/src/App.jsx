@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
+import { testConnection } from "./testFirestore";
 
 // Pages
 import Home from "./pages/Home";
@@ -17,6 +18,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
 
+  // autentication
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -25,20 +27,23 @@ function App() {
     return unsub;
   }, []);
 
-  // Evita flicker enquanto o Firebase responde
+  // Firestore test
+  //useEffect(() => {
+  //  testConnection();
+  //}, []);
+
   if (!authReady) return null;
 
   return (
     <div className="min-vh-100 bg-dark text-light">
-      {/* Navbar SEMPRE fora do <Routes/> */}
       <NavbarTop user={user} onLogout={() => signOut(auth)} />
 
       <Routes>
         <Route path="/" element={<Home />} />
-        {/* rotas que exigem login */}
+        {/* private routes */}
         {user && <Route path="/create" element={<CreateEvent />} />}
         {user && <Route path="/myevents" element={<MyEvents />} />}
-        {/* rotas públicas */}
+        {/* publics routes */}
         <Route path="/edit/:id" element={<EditEvent />} />
         <Route path="/event/:id" element={<EventDetails />} />
       </Routes>

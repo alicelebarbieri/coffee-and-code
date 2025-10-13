@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { deleteDoc, doc } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import MapPreview from "./MapPreview";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import GooglePayButton from "@google-pay/button-react";
 import {
   Calendar,
   MapPin,
@@ -14,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+// Estrelas de avaliação
 function Stars({ value = 0 }) {
   const full = Math.round(value ?? 0);
   return (
@@ -30,6 +32,26 @@ function Stars({ value = 0 }) {
   );
 }
 
+// Mapa do Google mostrando o local do evento
+export function EventMap({ lat, lng }) {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  });
+
+  if (!isLoaded) return <p>Loading map...</p>;
+
+  return (
+    <GoogleMap
+      mapContainerStyle={{ width: "100%", height: "300px", borderRadius: "12px" }}
+      center={{ lat, lng }}
+      zoom={14}
+    >
+      <Marker position={{ lat, lng }} />
+    </GoogleMap>
+  );
+}
+
+// Card principal do evento
 export default function EventCard({ event }) {
   const navigate = useNavigate();
 
@@ -151,14 +173,59 @@ export default function EventCard({ event }) {
           </span>
         </div>
 
-        {/* Mapa (opcional) */}
+        {/* Mapa */}
         {typeof event.lat === "number" &&
           typeof event.lng === "number" &&
           !event.isOnline && (
             <div className="mb-3">
-              <MapPreview lat={event.lat} lng={event.lng} height={160} rounded />
+              <EventMap lat={event.lat} lng={event.lng} />
             </div>
           )}
+
+        {/* Google Pay */}
+        {event.price > 0 && (
+          <div className="mb-3">
+            <GooglePayButton
+              environment="TEST"
+              paymentRequest={{
+                apiVersion: 2,
+                apiVersionMinor: 0,
+                allowedPaymentMethods: [
+                  {
+                    type: "CARD",
+                    parameters: {
+                      allowedAuthMethods: ["PAN_ONLY", "CRYPTOGRAM_3DS"],
+                      allowedCardNetworks: ["MASTERCARD", "VISA"],
+                    },
+                    tokenizationSpecification: {
+                      type: "PAYMENT_GATEWAY",
+                      parameters: {
+                        gateway: "stripe",
+                        "stripe:version": "2020-08-27",
+                        "stripe:publishableKey": import.meta.env
+                          .VITE_STRIPE_PUBLIC_KEY,
+                      },
+                    },
+                  },
+                ],
+                merchantInfo: {
+                  merchantId: "BCR2DN6XXXX", // depois configuramos isso
+                  merchantName: "Coffee & Code",
+                },
+                transactionInfo: {
+                  totalPriceStatus: "FINAL",
+                  totalPriceLabel: "Total",
+                  totalPrice: Number(event.price || 0).toFixed(2),
+                  currencyCode: "GBP",
+                  countryCode: "GB",
+                },
+              }}
+              onLoadPaymentData={(paymentData) => {
+                console.log("Payment successful:", paymentData);
+              }}
+            />
+          </div>
+        )}
 
         {/* Criado por */}
         <div className="text-muted small mb-3">
@@ -192,3 +259,4 @@ export default function EventCard({ event }) {
     </div>
   );
 }
+

@@ -10,7 +10,8 @@ import {
   PoundSterling,
   Star,
 } from "lucide-react";
-import MapPreview from "../components/MapPreview";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import GooglePayButton from "@google-pay/button-react";
 
 export default function EventDetails() {
   const { state: fromState } = useLocation();
@@ -39,6 +40,10 @@ export default function EventDetails() {
   const start = event.date
     ? new Date(`${event.date}T${(event.startTime || "09:00").padStart(5, "0")}`)
     : null;
+
+  // Coordenadas padrão de Birmingham (caso o evento não tenha lat/lng)
+  const lat = event.lat ?? 52.4862;
+  const lng = event.lng ?? -1.8904;
 
   return (
     <div className="container py-4">
@@ -113,25 +118,22 @@ export default function EventDetails() {
             </div>
           </div>
 
-          {/* Mapa (quando presencial) */}
-          {typeof event.lat === "number" &&
-          typeof event.lng === "number" &&
-          !event.isOnline ? (
-            <div className="mb-4">
-              <h6 className="text-muted mb-2">Location</h6>
-              <MapPreview lat={event.lat} lng={event.lng} title={event.title} height={260} />
-              <div className="small text-muted mt-2">{event.location}</div>
+          {/* Mapa do local */}
+          {!event.isOnline && (
+            <div className="my-4">
+              <h5>Location</h5>
+              <EventMap lat={lat} lng={lng} />
+              <div className="small text-muted mt-2">{event.location || "Birmingham"}</div>
             </div>
-          ) : (
-            event.isOnline && (
-              <div className="small text-muted mb-4">Online event</div>
-            )
           )}
 
           <h4 className="h5">Details</h4>
           <p className="lead" style={{ whiteSpace: "pre-wrap" }}>
             {event.description || "No description provided."}
           </p>
+
+          {/* Botão de pagamento */}
+          {event.price > 0 && <EventPayment price={Number(event.price)} />}
         </div>
 
         <aside className="col-12 col-lg-4">
@@ -163,3 +165,67 @@ export default function EventDetails() {
   );
 }
 
+// --- Mapa Google ---
+function EventMap({ lat, lng }) {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+  });
+
+  if (!isLoaded) return <p>Loading map...</p>;
+
+  return (
+    <GoogleMap
+      mapContainerStyle={{ width: "100%", height: "300px", borderRadius: "12px" }}
+      center={{ lat, lng }}
+      zoom={13}
+    >
+      <Marker position={{ lat, lng }} />
+    </GoogleMap>
+  );
+}
+
+// --- Botão de pagamento ---
+function EventPayment({ price }) {
+  return (
+    <div className="my-4">
+      <GooglePayButton
+        environment="TEST"
+        paymentRequest={{
+          apiVersion: 2,
+          apiVersionMinor: 0,
+          allowedPaymentMethods: [
+            {
+              type: "CARD",
+              parameters: {
+                allowedAuthMethods: ["PAN_ONLY", "CRYPTOGRAM_3DS"],
+                allowedCardNetworks: ["MASTERCARD", "VISA"],
+              },
+              tokenizationSpecification: {
+                type: "PAYMENT_GATEWAY",
+                parameters: {
+                  gateway: "stripe",
+                  "stripe:version": "2020-08-27",
+                  "stripe:publishableKey": import.meta.env.VITE_STRIPE_PUBLIC_KEY,
+                },
+              },
+            },
+          ],
+          merchantInfo: {
+            merchantId: "BCR2DN6...",
+            merchantName: "Coffee & Code",
+          },
+          transactionInfo: {
+            totalPriceStatus: "FINAL",
+            totalPriceLabel: "Total",
+            totalPrice: price.toFixed(2),
+            currencyCode: "GBP",
+            countryCode: "GB",
+          },
+        }}
+        onLoadPaymentData={(paymentRequest) => {
+          console.log("Payment data", paymentRequest);
+        }}
+      />
+    </div>
+  );
+}

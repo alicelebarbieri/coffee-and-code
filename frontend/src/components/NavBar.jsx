@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import AuthButton from "./AuthButton";
 
 export default function NavbarTop({ user, onLogout }) {
   return (
@@ -30,6 +31,7 @@ export default function NavbarTop({ user, onLogout }) {
               </button>
             </>
           )}
+          <AuthButton user={user} onLogout={onLogout} />
         </div>
       </div>
     </nav>

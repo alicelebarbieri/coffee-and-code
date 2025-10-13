@@ -1,23 +1,21 @@
-export async function geocodeAddress(query) {
-  if (!query || !query.trim()) return null;
+export async function geocodeAddress(address) {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const encodedAddress = encodeURIComponent(address);
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
 
-  const url =
-    "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" +
-    encodeURIComponent(query);
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
 
-  const res = await fetch(url, {
-    headers: {
-      "Accept-Language": "en",
-    },
-  });
-  if (!res.ok) return null;
-
-  const data = await res.json();
-  if (!Array.isArray(data) || data.length === 0) return null;
-
-  const first = data[0];
-  return {
-    lat: parseFloat(first.lat),
-    lng: parseFloat(first.lon),
-  };
+    if (data.status === "OK" && data.results.length > 0) {
+      const { lat, lng } = data.results[0].geometry.location;
+      return { lat, lng };
+    } else {
+      console.warn("Geocode failed:", data.status);
+      return null;
+    }
+  } catch (err) {
+    console.error("Error fetching geocode:", err);
+    return null;
+  }
 }

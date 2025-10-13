@@ -1,76 +1,55 @@
-import { useEffect, useState } from "react";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, provider } from "../firebase";
+import { signInWithPopup, signOut } from "firebase/auth";
 
-function AuthButton() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
+export default function AuthButton({ user }) {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (err) {
+      console.error("Error during login:", err);
+      alert("Login failed. Check console for details.");
     }
   };
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch (err) {
+      console.error("Error during logout:", err);
     }
   };
 
-  if (user) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <img
-          src={user.photoURL}
-          alt={user.displayName}
-          style={{ width: "30px", borderRadius: "50%" }}
-        />
-        <span style={{ color: "white", fontSize: "0.9rem" }}>
-          {user.displayName}
-        </span>
+  return (
+    <div>
+      {!user ? (
         <button
-          onClick={handleLogout}
+          onClick={handleLogin}
           style={{
-            background: "#e74c3c",
-            border: "none",
-            padding: "0.4rem 0.8rem",
+            backgroundColor: "#4285F4",
             color: "white",
+            border: "none",
             borderRadius: "6px",
+            padding: "0.6rem 1.2rem",
             cursor: "pointer",
           }}
         >
-          Logout
+          Sign in with Google
         </button>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      onClick={handleLogin}
-      style={{
-        background: "#3b3b98",
-        border: "none",
-        padding: "0.5rem 1rem",
-        color: "white",
-        borderRadius: "6px",
-        cursor: "pointer",
-      }}
-    >
-      Login with Google
-    </button>
+      ) : (
+        <button
+          onClick={handleLogout}
+          style={{
+            backgroundColor: "#555",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            padding: "0.6rem 1.2rem",
+            cursor: "pointer",
+          }}
+        >
+          Logout ({user.displayName})
+        </button>
+      )}
+    </div>
   );
 }
-
-export default AuthButton;

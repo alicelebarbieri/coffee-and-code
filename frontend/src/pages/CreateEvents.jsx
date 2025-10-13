@@ -4,12 +4,14 @@ import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useNavigate } from "react-router-dom";
 import { geocodeAddress } from "../utils/geocode";
+import imageCompression from "browser-image-compression";
+
 
 export default function CreateEvent() {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("09:00"); // novo
-  const [isOnline, setIsOnline] = useState(false); // novo
+  const [startTime, setStartTime] = useState("09:00");
+  const [isOnline, setIsOnline] = useState(false); 
   const [location, setLocation] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
@@ -23,12 +25,16 @@ export default function CreateEvent() {
       alert("Please fill all required fields.");
       return;
     }
-
     setLoading(true);
     try {
       // Upload da imagem (opcional)
       let imageUrl = "";
       if (image) {
+          const compressed = await imageCompression(image, {
+          maxSizeMB: 1.0,            // máximo ~500 KB
+          maxWidthOrHeight: 1280,    // redimensiona se for gigante
+          useWebWorker: true,        // mais rápido e seguro
+        });
         const uid = auth.currentUser?.uid || "anon";
         const imageRef = ref(
           storage,
