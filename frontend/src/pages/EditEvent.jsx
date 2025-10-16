@@ -1,173 +1,79 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { db, storage, auth } from "../firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { geocodeAddress } from "../utils/geocode";
+import { useNavigate, useParams } from "react-router-dom";
+import imageCompression from "browser-image-compression";
 
 export default function EditEvent() {
-  const { state: eventFromState } = useLocation();
-  const { id: routeId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [image, setImage] = useState(null);
 
-  const [event, setEvent] = useState(eventFromState || null);
-  const eventId = useMemo(() => event?.id || routeId, [event, routeId]);
-
-  const [title, setTitle] = useState(eventFromState?.title || "");
-  const [date, setDate] = useState(eventFromState?.date || "");
-  const [startTime, setStartTime] = useState(eventFromState?.startTime || "09:00");
-  const [isOnline, setIsOnline] = useState(!!eventFromState?.isOnline);
-  const [locationV, setLocationV] = useState(eventFromState?.location || "");
-  const [price, setPrice] = useState(eventFromState?.price || "");
-  const [description, setDescription] = useState(
-    eventFromState?.description || ""
-  );
-
-  const [imageFile, setImageFile] = useState(null);
-  const [preview, setPreview] = useState(eventFromState?.imageUrl || "");
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!eventFromState);
-  const [error, setError] = useState("");
-
-  // Carrega do Firestore se veio só o id
+  // Load existing event data
   useEffect(() => {
-    let active = true;
-    const fetchIfNeeded = async () => {
-      if (eventFromState || !eventId) {
-        setInitialLoading(false);
-        return;
+    const fetchEvent = async () => {
+      const snap = await getDoc(doc(db, "events", id));
+      if (snap.exists()) {
+        setEvent({ id: snap.id, ...snap.data() });
       }
-      try {
-        const snap = await getDoc(doc(db, "events", eventId));
-        if (!snap.exists()) {
-          if (active) {
-            setError("Event not found.");
-            setInitialLoading(false);
-          }
-          return;
-        }
-        const data = { id: snap.id, ...snap.data() };
-        if (!active) return;
-
-        setEvent(data);
-        setTitle(data.title || "");
-        setDate(data.date || "");
-        setStartTime(data.startTime || "09:00");
-        setIsOnline(!!data.isOnline);
-        setLocationV(data.location || "");
-        setPrice(data.price || "");
-        setDescription(data.description || "");
-        setPreview(data.imageUrl || "");
-      } catch (err) {
-        console.error(err);
-        if (active) setError("Failed to load event.");
-      } finally {
-        if (active) setInitialLoading(false);
-      }
+      setLoading(false);
     };
+    fetchEvent();
+  }, [id]);
 
-    fetchIfNeeded();
-    return () => {
-      active = false;
-    };
-  }, [eventId, eventFromState]);
+  if (loading) {
+    return (
+      <div className="text-center mt-5">
+        <div className="spinner-border" role="status" />
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    return () => {
-      if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
-    };
-  }, [preview]);
+  if (!event) {
+    return <p className="text-center text-light mt-5">Event not found.</p>;
+  }
 
-  const handleFileChange = (file) => {
-    setImageFile(file);
-    if (preview && preview.startsWith("blob:")) {
-      URL.revokeObjectURL(preview);
-    }
-    setPreview(file ? URL.createObjectURL(file) : "");
-  };
-
-  const handleUpdate = async (e) => {
+  // Handle event update
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!eventId) return;
-
-    if (!auth.currentUser || (event && auth.currentUser.uid !== event.userId)) {
-      alert("You can only edit your own events.");
-      return;
-    }
-
-    setLoading(true);
     try {
-      // imagem
-      let imageUrl =
-        preview && !preview.startsWith("blob:") ? preview : event?.imageUrl || "";
+      let imageUrl = event.imageUrl || "";
 
-      if (imageFile) {
+      // Optional: compress and upload new image
+      if (image) {
+        const compressed = await imageCompression(image, {
+          maxSizeMB: 1.0,
+          maxWidthOrHeight: 1280,
+          useWebWorker: true,
+        });
         const uid = auth.currentUser?.uid || "anon";
         const imageRef = ref(
           storage,
-          `events/${uid}/${eventId}-${Date.now()}-${imageFile.name}`
+          `event-images/${uid}/${Date.now()}_${image.name}`
         );
-        const snap = await uploadBytes(imageRef, imageFile, {
-          contentType: imageFile.type,
+        const snap = await uploadBytes(imageRef, compressed, {
+          contentType: image.type,
         });
         imageUrl = await getDownloadURL(snap.ref);
       }
 
-      // payload base
-      const payload = {
-        title,
-        date,
-        startTime,
-        location: locationV,
-        isOnline,
-        price,
-        description: description || "",
+      // Update Firestore document
+      await updateDoc(doc(db, "events", id), {
+        ...event,
         imageUrl,
-        updatedAt: serverTimestamp(),
-      };
-
-      // geocode (presencial)
-      try {
-        if (!isOnline && locationV) {
-          const coords = await geocodeAddress(locationV);
-          if (coords) {
-            payload.lat = coords.lat;
-            payload.lng = coords.lng;
-          } else {
-            payload.lat = null;
-            payload.lng = null;
-          }
-        } else {
-          payload.lat = null;
-          payload.lng = null;
-        }
-      } catch (e1) {
-        console.warn("Geocode failed:", e1);
-      }
-
-      await updateDoc(doc(db, "events", eventId), payload);
+        updatedAt: Timestamp.now(),
+      });
 
       alert("Event updated successfully!");
       navigate("/myevents");
     } catch (err) {
       console.error("Error updating event:", err);
       alert("Failed to update event.");
-    } finally {
-      setLoading(false);
     }
   };
-
-  if (initialLoading) {
-    return (
-      <p style={{ textAlign: "center", marginTop: "2rem" }}>
-        Loading event...
-      </p>
-    );
-  }
-
-  if (error) {
-    return <p style={{ textAlign: "center", marginTop: "2rem" }}>{error}</p>;
-  }
 
   return (
     <div
@@ -175,78 +81,102 @@ export default function EditEvent() {
         maxWidth: "640px",
         margin: "2rem auto",
         padding: "2rem",
-        background: "#f9f9ff",
+        background: "#1e1e1e",
+        color: "white",
         borderRadius: "12px",
-        boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
       }}
     >
-      <h2 style={{ textAlign: "center", marginBottom: "1.5rem" }}>Edit Event</h2>
+      {/* Page title */}
+      <h2
+        style={{
+          textAlign: "center",
+          marginBottom: "1.5rem",
+          color: "white",
+        }}
+      >
+        Edit Event
+      </h2>
 
+      {/* Edit form */}
       <form
-        onSubmit={handleUpdate}
-        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+        onSubmit={handleSubmit}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem",
+        }}
       >
         <input
           type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Event Title"
+          placeholder="Title"
+          value={event.title || ""}
+          onChange={(e) => setEvent({ ...event, title: e.target.value })}
           required
+          style={inputStyle}
         />
 
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <input
             type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
+            value={event.date || ""}
+            onChange={(e) => setEvent({ ...event, date: e.target.value })}
             required
-            style={{ flex: 1 }}
+            style={{ ...inputStyle, flex: 1 }}
           />
           <input
             type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            style={{ width: 140 }}
+            value={event.startTime || ""}
+            onChange={(e) => setEvent({ ...event, startTime: e.target.value })}
+            style={{ ...inputStyle, width: 140 }}
           />
         </div>
 
-        <label className="d-flex align-items-center gap-2">
+        <label style={{ fontSize: "0.9rem" }}>
           <input
             type="checkbox"
-            checked={isOnline}
-            onChange={(e) => setIsOnline(e.target.checked)}
+            checked={event.isOnline || false}
+            onChange={(e) =>
+              setEvent({ ...event, isOnline: e.target.checked })
+            }
+            style={{ marginRight: "0.5rem" }}
           />
           Online event
         </label>
 
-        {!isOnline && (
+        {!event.isOnline && (
           <input
             type="text"
-            value={locationV}
-            onChange={(e) => setLocationV(e.target.value)}
             placeholder="Location"
-            required
+            value={event.location || ""}
+            onChange={(e) => setEvent({ ...event, location: e.target.value })}
+            style={inputStyle}
           />
         )}
 
         <input
           type="text"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="Price (or Free)"
+          placeholder="Price"
+          value={event.price || ""}
+          onChange={(e) => setEvent({ ...event, price: e.target.value })}
+          style={inputStyle}
         />
 
         <textarea
           placeholder="Event Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
+          value={event.description || ""}
+          onChange={(e) =>
+            setEvent({ ...event, description: e.target.value })
+          }
+          rows="3"
+          style={inputStyle}
         />
 
-        {preview && (
+        {/* Display current image */}
+        {event.imageUrl && (
           <img
-            src={preview}
-            alt="Current"
+            src={event.imageUrl}
+            alt="Event"
             style={{
               width: "100%",
               height: "180px",
@@ -256,27 +186,49 @@ export default function EditEvent() {
           />
         )}
 
+        {/* Upload new image */}
         <input
           type="file"
           accept="image/*"
-          onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+          onChange={(e) => setImage(e.target.files?.[0] || null)}
+          style={{
+            background: "#2a2a2a",
+            color: "white",
+            border: "1px solid #444",
+            padding: "0.6rem",
+            borderRadius: "6px",
+          }}
         />
 
+        {/* Save button */}
         <button
           type="submit"
-          disabled={loading}
           style={{
-            background: "#3b3b98",
+            background: "#2d2d2d",
             color: "white",
             border: "none",
-            padding: "0.8rem",
+            padding: "0.9rem",
             borderRadius: "6px",
+            fontWeight: "600",
             cursor: "pointer",
+            transition: "all 0.2s ease-in-out",
           }}
+          onMouseEnter={(e) => (e.target.style.background = "#444")}
+          onMouseLeave={(e) => (e.target.style.background = "#2d2d2d")}
         >
-          {loading ? "Saving..." : "Save Changes"}
+          Save Changes
         </button>
       </form>
     </div>
   );
 }
+
+// --- Shared input style for dark theme ---
+const inputStyle = {
+  background: "#2a2a2a",
+  color: "white",
+  border: "1px solid #444",
+  borderRadius: "6px",
+  padding: "0.6rem",
+  fontSize: "0.95rem",
+};

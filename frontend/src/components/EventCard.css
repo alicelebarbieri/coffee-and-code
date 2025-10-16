@@ -1,0 +1,36 @@
+/* Google Pay container inside event cards */
+.google-pay-button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  overflow: hidden; /* prevents button overflow */
+  box-sizing: border-box;
+  margin-bottom: 1rem;
+}
+
+/* The injected Google Pay div */
+.google-pay-button-container .gpay-card-info-placeholder-container {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Make it fit neatly on small screens */
+@media (max-width: 768px) {
+  .google-pay-button-container .gpay-card-info-placeholder-container {
+    max-width: 240px;
+    transform: scale(0.95);
+  }
+}
+
+@media (max-width: 480px) {
+  .google-pay-button-container .gpay-card-info-placeholder-container {
+    max-width: 200px;
+    transform: scale(0.9);
+  }
+}

@@ -24,7 +24,17 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.google-pay-button-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 
+.google-pay-button-container iframe {
+  width: 100% !important;
+  max-width: 280px;  
+  min-width: 180px;  
+}
 .card .card-body { display: flex; flex-direction: column; }
 
 .logo {

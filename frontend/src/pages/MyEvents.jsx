@@ -3,10 +3,11 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import EventCard from "../components/EventCard";
 
-function MyEvents() {
+export default function MyEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch all events created by the logged-in user
   useEffect(() => {
     const fetchUserEvents = async () => {
       if (!auth.currentUser) {
@@ -35,24 +36,58 @@ function MyEvents() {
     fetchUserEvents();
   }, []);
 
-  if (loading) return <p style={{ textAlign: "center" }}>Loading...</p>;
-
-  if (events.length === 0)
+  // Loading spinner
+  if (loading)
     return (
-      <p style={{ textAlign: "center", marginTop: "2rem" }}>
-        You haven't created any events yet.
+      <p
+        style={{
+          textAlign: "center",
+          color: "white",
+          marginTop: "3rem",
+          fontSize: "1.2rem",
+        }}
+      >
+        Loading...
       </p>
     );
 
+  // Message when user has no events
+  if (events.length === 0)
+    return (
+      <p
+        style={{
+          textAlign: "center",
+          marginTop: "2rem",
+          color: "white",
+          fontSize: "1.1rem",
+        }}
+      >
+        You haven’t created any events yet.
+      </p>
+    );
+
+  // Display user's events
   return (
     <div style={{ padding: "2rem" }}>
-      <h1 style={{ textAlign: "center" }}>My Events</h1>
+      {/* Page title */}
+      <h1
+        style={{
+          textAlign: "center",
+          color: "white",
+          fontWeight: "600",
+          fontSize: "2rem",
+          marginBottom: "1.5rem",
+        }}
+      >
+        My Events
+      </h1>
+
+      {/* Grid of event cards */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "1rem",
-          marginTop: "2rem",
+          gap: "1.5rem",
         }}
       >
         {events.map((event) => (
@@ -63,4 +98,3 @@ function MyEvents() {
   );
 }
 
-export default MyEvents;

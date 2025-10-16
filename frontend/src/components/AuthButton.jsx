@@ -19,37 +19,47 @@ export default function AuthButton({ user }) {
     }
   };
 
+  if (!user) {
+    return (
+      <button
+        onClick={handleLogin}
+        className="btn btn-outline-light fw-semibold"
+        style={{
+          borderRadius: "6px",
+          padding: "0.5rem 1rem",
+        }}
+      >
+        Sign in with Google
+      </button>
+    );
+  }
+
   return (
-    <div>
-      {!user ? (
-        <button
-          onClick={handleLogin}
+    <div className="d-flex align-items-center gap-2">
+      {user.photoURL && (
+        <img
+          src={user.photoURL}
+          alt="Profile"
+          className="rounded-circle border"
           style={{
-            backgroundColor: "#4285F4",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            padding: "0.6rem 1.2rem",
-            cursor: "pointer",
+            width: 32,
+            height: 32,
+            objectFit: "cover",
+            borderColor: "#444",
           }}
-        >
-          Sign in with Google
-        </button>
-      ) : (
-        <button
-          onClick={handleLogout}
-          style={{
-            backgroundColor: "#555",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            padding: "0.6rem 1.2rem",
-            cursor: "pointer",
-          }}
-        >
-          Logout ({user.displayName})
-        </button>
+        />
       )}
+      <span className="small text-light">{user.displayName}</span>
+      <button
+        onClick={handleLogout}
+        className="btn btn-outline-light btn-sm fw-semibold"
+        style={{
+          borderRadius: "6px",
+          padding: "0.4rem 0.8rem",
+        }}
+      >
+        Logout
+      </button>
     </div>
   );
 }

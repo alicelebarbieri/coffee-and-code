@@ -10,14 +10,17 @@ import {
   PoundSterling,
   Star,
 } from "lucide-react";
-import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { GoogleMap, Marker } from "@react-google-maps/api";
 import GooglePayButton from "@google-pay/button-react";
+import { useGoogleMaps } from "../hooks/useGoogleMaps";
+
 
 export default function EventDetails() {
   const { state: fromState } = useLocation();
   const { id } = useParams();
   const [event, setEvent] = useState(fromState || null);
   const [loading, setLoading] = useState(!fromState);
+  const { isLoaded } = useGoogleMaps();
 
   useEffect(() => {
     if (fromState) return;
@@ -41,15 +44,15 @@ export default function EventDetails() {
     ? new Date(`${event.date}T${(event.startTime || "09:00").padStart(5, "0")}`)
     : null;
 
-  // Coordenadas padrão de Birmingham (caso o evento não tenha lat/lng)
-  const lat = event.lat ?? 52.4862;
-  const lng = event.lng ?? -1.8904;
+  const lat =
+    event.lat !== null && event.lat !== undefined ? event.lat : 51.5074;
+  const lng =
+    event.lng !== null && event.lng !== undefined ? event.lng : -0.1278;
 
   return (
     <div className="container py-4">
       <div className="row g-4">
         <div className="col-12 col-lg-8">
-          {/* Imagem grande */}
           {event.imageUrl ? (
             <img
               src={event.imageUrl}
@@ -118,12 +121,11 @@ export default function EventDetails() {
             </div>
           </div>
 
-          {/* Mapa do local */}
           {!event.isOnline && (
             <div className="my-4">
               <h5>Location</h5>
               <EventMap lat={lat} lng={lng} />
-              <div className="small text-muted mt-2">{event.location || "Birmingham"}</div>
+              <div className="small text-muted mt-2">{event.location}</div>
             </div>
           )}
 
@@ -132,59 +134,34 @@ export default function EventDetails() {
             {event.description || "No description provided."}
           </p>
 
-          {/* Botão de pagamento */}
           {event.price > 0 && <EventPayment price={Number(event.price)} />}
         </div>
-
-        <aside className="col-12 col-lg-4">
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <h5 className="card-title">Attend</h5>
-              <p className="text-muted small">
-                Add to your calendar or share with friends.
-              </p>
-              <div className="d-grid gap-2">
-                <button
-                  className="btn btn-primary"
-                  onClick={() => window.history.back()}
-                >
-                  Back
-                </button>
-                <button
-                  className="btn btn-outline-secondary"
-                  onClick={() => window.print()}
-                >
-                  Print details
-                </button>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
     </div>
   );
 }
 
-// --- Mapa Google ---
 function EventMap({ lat, lng }) {
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-  });
+
+  const { isLoaded } = useGoogleMaps();
 
   if (!isLoaded) return <p>Loading map...</p>;
 
   return (
     <GoogleMap
-      mapContainerStyle={{ width: "100%", height: "300px", borderRadius: "12px" }}
+      mapContainerStyle={{
+        width: "100%",
+        height: "300px",
+        borderRadius: "12px",
+      }}
       center={{ lat, lng }}
-      zoom={13}
+      zoom={14}
     >
       <Marker position={{ lat, lng }} />
     </GoogleMap>
   );
 }
 
-// --- Botão de pagamento ---
 function EventPayment({ price }) {
   return (
     <div className="my-4">
@@ -205,7 +182,8 @@ function EventPayment({ price }) {
                 parameters: {
                   gateway: "stripe",
                   "stripe:version": "2020-08-27",
-                  "stripe:publishableKey": import.meta.env.VITE_STRIPE_PUBLIC_KEY,
+                  "stripe:publishableKey":
+                    import.meta.env.VITE_STRIPE_PUBLIC_KEY,
                 },
               },
             },

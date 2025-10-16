@@ -127,3 +127,28 @@ button:hover {
   transform: scale(1.03);
 }
 
+/* Force the Google Pay button to stay inside its parent container */
+.gpay-card-info-placeholder-container {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: hidden; /* prevents it from spilling out */
+  box-sizing: border-box;
+}
+
+/* Make the iframe from Google Pay adapt to your card */
+.gpay-card-info-placeholder-container > div {
+  width: 100% !important;
+  max-width: 280px;
+}
+
+/* Optional: adjust size on smaller screens */
+@media (max-width: 480px) {
+  .gpay-card-info-placeholder-container > div {
+    max-width: 100%;
+    transform: scale(0.95);
+  }
+}
