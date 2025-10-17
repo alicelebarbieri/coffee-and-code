@@ -61,11 +61,18 @@ export default function AuthForm() {
       }}
     >
     <button
-  onClick={() => {
-    import("firebase/auth").then(({ GoogleAuthProvider, signInWithPopup }) => {
+  onClick={async () => {
+    try {
+      const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
       const provider = new GoogleAuthProvider();
-      signInWithPopup(auth, provider);
-    });
+      await signInWithPopup(auth, provider);
+
+      // goto Home if login successful
+      navigate("/");
+    } catch (error) {
+      console.error("Google login error:", error);
+      alert("Failed to sign in with Google. Please try again.");
+    }
   }}
   style={{
     backgroundColor: "#333",

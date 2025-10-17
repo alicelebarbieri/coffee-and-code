@@ -52,9 +52,9 @@ export default function EventDetails() {
 
   // Join or leave event
 
-  const [buttonDisabled, setButtonDisabled] = useState(false); // ⏳ prevent spam clicks
+  const [buttonDisabled, setButtonDisabled] = useState(false); // prevent spam clicks
 
-const toggleJoinEvent = async () => {
+  const toggleJoinEvent = async () => {
   const user = auth.currentUser;
   if (!user) return alert("Please log in first.");
   if (buttonDisabled) return;

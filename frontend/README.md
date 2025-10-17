@@ -33,19 +33,19 @@ Built with **React (Vite)** + **Firebase** + **Google Maps API** + **Google Pay 
 
 ### 1️⃣ Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/coffee-and-code.git
+git clone https://github.com/alicelebarbieri/coffee-and-code.git
 cd coffee-and-code
+```
 
-
-
-2️⃣ Install dependencies
-
+### 2️⃣ Install dependencies
+```bash
 npm install
+```
 
-3️⃣ Create your .env file
+### 3️⃣ Create your .env file
+Inside the root of the project, create a file named `.env` and add your credentials:
 
-Inside the root of the project, create a file named .env and add your credentials:
-
+```
 VITE_FIREBASE_API_KEY=your_firebase_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
@@ -55,88 +55,75 @@ VITE_FIREBASE_APP_ID=your_app_id
 
 VITE_GOOGLE_MAPS_API_KEY=your_google_maps_key
 VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
+```
 
-    ⚠️ Make sure to enable the following Google Cloud APIs for your Maps key:
+⚠️ Make sure to enable the following Google Cloud APIs for your Maps key:
+- Maps JavaScript API  
+- Places API  
+- Geocoding API
 
-        Maps JavaScript API
-
-        Places API
-
-        Geocoding API
-
-Also, restrict your key to these referrers:
-
+Restrict your key to these referrers:
+```
 http://localhost:5173/*
 https://your-deployed-domain.netlify.app/*
+```
 
-4️⃣ Run the project
-
+### 4️⃣ Run the project
+```bash
 npm run dev
+```
+The app will be available at:  
+👉 [http://localhost:5173](http://localhost:5173)
 
-The app will be available at
-👉 http://localhost:5173
-☁️ Firebase Setup
+---
 
-If you're setting up your own Firebase project:
+## ☁️ Firebase Setup
 
-    Go to Firebase Console
+1. Go to [Firebase Console](https://console.firebase.google.com)  
+2. Create a new project  
+3. Enable Authentication → Google Sign-In + Email/Password  
+4. Enable Firestore Database  
+5. Enable Storage  
+6. Copy your Firebase config and paste it into `.env`
 
-    Create a new project
+---
 
-    Enable Authentication → Google Sign-In
+## 🗺️ Google Maps Setup
 
-    Enable Firestore Database
+1. Visit [Google Cloud Console](https://console.cloud.google.com/)  
+2. Enable: Maps JavaScript API, Places API, Geocoding API  
+3. Create a new API key  
+4. Restrict it to HTTP referrers (localhost + production URL)
 
-    Enable Storage
+---
 
-    Copy your Firebase config and paste it in the .env file above.
+## 💳 Google Pay Setup
 
-🗺️ Google Maps Setup
-
-    Visit Google Cloud Console
-
-    Enable:
-
-        Maps JavaScript API
-
-        Places API
-
-        Geocoding API
-
-    Create a new API key
-
-    Restrict it to HTTP referrers (localhost + your production URL)
-
-💳 Google Pay Setup
-
-Google Pay is used for paid events.
+Google Pay is used for paid events.  
 To enable it, create a Stripe test account and set your publishable key:
 
+```
 VITE_STRIPE_PUBLIC_KEY=pk_test_xxxxxxxxxxxxxxxxxxxxx
+```
+The app uses `environment="TEST"` by default — safe for development.
 
-    The app uses environment="TEST" by default — safe for development.
+---
 
-🧠 Developer Notes
+## 🧠 Developer Notes
 
-    The project uses @react-google-maps/api for map integration.
+- The project uses `@react-google-maps/api` for map integration.  
+- The loader is unified through the custom hook `src/hooks/useGoogleMaps.js`.  
+- Ratings are saved per user and averaged in Firestore.  
+- Each component has its own `.css` file.  
 
-    The loader is unified through the custom hook:
-    src/hooks/useGoogleMaps.js
-    → ensures only one Google Maps script is loaded across the app.
+📘 Developer guide: [README_DEV.md](./README_DEV.md)
 
-    Ratings are saved per-user and averaged automatically in Firestore.
+---
 
-    Styles are modular: each component (e.g. EventCard.jsx) has its own .css.
+## 🧑‍💻 Author
 
-🤝 Contributing
+**Alicele Barbieri**  
+💼 Junior Full-Stack Developer  
+🌐 [LinkedIn/Alicele.Barbieri](#)  
 
-Pull requests are welcome!
-If you’d like to improve functionality or design, fork the repo and submit a PR.
-🧑‍💻 Author
-
-Alicele Barbieri
-💼 Junior Full-Stack Developer
-🌐 LinkedIn/Alicele.Barbieri
-📜 License
-
-This project is licensed under the MIT License — feel free to use, modify, and share.
+📜 Licensed under MIT — free to use, modify, and share.
