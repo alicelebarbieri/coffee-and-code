@@ -107,6 +107,16 @@ export default function CreateEvent() {
         lng: finalCoords?.lng || null,
       };
 
+      const user = auth.currentUser;
+
+      if (user) {
+        payload.userId = user.uid;
+        payload.userName = user.displayName || user.email || "Anonymous";
+      } else {
+        payload.userId = null;
+        payload.userName = "Anonymous";
+      }
+      
       await addDoc(collection(db, "events"), payload);
       alert("Event created successfully!");
       navigate("/myevents");

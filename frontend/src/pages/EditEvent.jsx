@@ -42,7 +42,7 @@ export default function EditEvent() {
     try {
       let imageUrl = event.imageUrl || "";
 
-      // Optional: compress and upload new image
+      // compress and upload new image
       if (image) {
         const compressed = await imageCompression(image, {
           maxSizeMB: 1.0,
@@ -223,7 +223,6 @@ export default function EditEvent() {
   );
 }
 
-// --- Shared input style for dark theme ---
 const inputStyle = {
   background: "#2a2a2a",
   color: "white",

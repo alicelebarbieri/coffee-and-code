@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import EventCard from "../components/EventCard";
 import Hero from "../components/Hero";
@@ -10,12 +10,16 @@ function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      try {
-        // Fetch all events ordered by creation date
-        const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        const allEvents = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
+
+    // Firestore listener for real-time updates
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const allEvents = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
         const now = new Date();
         const upcoming = [];
@@ -36,20 +40,28 @@ function Home() {
 
         // Sort both groups by date
         upcoming.sort(
-          (a, b) => new Date(a.date + "T" + a.startTime) - new Date(b.date + "T" + b.startTime)
+          (a, b) =>
+            new Date(a.date + "T" + a.startTime) -
+            new Date(b.date + "T" + b.startTime)
         );
         past.sort(
-          (a, b) => new Date(b.date + "T" + b.startTime) - new Date(a.date + "T" + a.startTime)
+          (a, b) =>
+            new Date(b.date + "T" + b.startTime) -
+            new Date(a.date + "T" + a.startTime)
         );
 
         setUpcomingEvents(upcoming);
         setPastEvents(past);
-      } catch (err) {
-        console.error("Failed to load events:", err);
-      } finally {
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Failed to listen to events:", error);
         setLoading(false);
       }
-    })();
+    );
+
+    // Cleanup listener when component unmounts
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -65,7 +77,7 @@ function Home() {
           </div>
         ) : (
           <>
-            {/* --- Upcoming Events --- */}
+            {/* Upcoming Events */}
             <h2 className="mb-2 text-center text-white">Upcoming Events</h2>
             <p className="text-center text-muted mb-4">
               Find meetups happening near you — or online
@@ -91,7 +103,7 @@ function Home() {
               </div>
             )}
 
-            {/* --- Past Events --- */}
+            {/* Past Events */}
             {pastEvents.length > 0 && (
               <>
                 <h2 className="mb-2 text-center text-white">Past Events</h2>
@@ -119,6 +131,3 @@ function Home() {
 }
 
 export default Home;
-
-
-

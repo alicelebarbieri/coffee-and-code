@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { db, auth } from "../firebase";
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, increment } from "firebase/firestore";
 import {
   Calendar,
   MapPin,
@@ -9,18 +9,21 @@ import {
   UsersRound,
   PoundSterling,
   Star,
+  CheckCircle,
+  LogOut,
 } from "lucide-react";
 import { GoogleMap, Marker } from "@react-google-maps/api";
 import GooglePayButton from "@google-pay/button-react";
 import { useGoogleMaps } from "../hooks/useGoogleMaps";
-
 
 export default function EventDetails() {
   const { state: fromState } = useLocation();
   const { id } = useParams();
   const [event, setEvent] = useState(fromState || null);
   const [loading, setLoading] = useState(!fromState);
+  const [joined, setJoined] = useState(false); // track join status
   const { isLoaded } = useGoogleMaps();
+  const [loadingJoin, setLoadingJoin] = useState(false);
 
   useEffect(() => {
     if (fromState) return;
@@ -32,6 +35,13 @@ export default function EventDetails() {
     })();
   }, [fromState, id]);
 
+  // Check if current user has joined
+  useEffect(() => {
+    if (!event || !auth.currentUser) return;
+    const attendees = event.attendees || [];
+    setJoined(attendees.includes(auth.currentUser.uid));
+  }, [event]);
+
   if (loading || !event) {
     return (
       <div className="container py-5 text-center">
@@ -39,6 +49,66 @@ export default function EventDetails() {
       </div>
     );
   }
+
+  // Join or leave event
+
+  const [buttonDisabled, setButtonDisabled] = useState(false); // ⏳ prevent spam clicks
+
+const toggleJoinEvent = async () => {
+  const user = auth.currentUser;
+  if (!user) return alert("Please log in first.");
+  if (buttonDisabled) return;
+
+  setButtonDisabled(true);
+  setLoadingJoin(true);
+
+  const eventRef = doc(db, "events", id);
+
+  try {
+    const snap = await getDoc(eventRef);
+    if (!snap.exists()) return alert("Event not found!");
+
+    const data = snap.data();
+    const attendees = data.attendees || [];
+
+    if (!joined) {
+      // JOIN EVENT
+      await updateDoc(eventRef, {
+        attendees: arrayUnion(user.uid),
+        attendeesCount: data.attendeesCount ? increment(1) : 1, 
+      });
+
+      setJoined(true);
+      setEvent((prev) => ({
+        ...prev,
+        attendeesCount: (prev.attendeesCount ?? 0) + 1,
+        attendees: [...(prev.attendees || []), user.uid],
+      }));
+    } else {
+      // LEAVE EVENT
+      await updateDoc(eventRef, {
+        attendees: arrayRemove(user.uid),
+        attendeesCount:
+          data.attendeesCount && data.attendeesCount > 0
+            ? increment(-1)
+            : 0, // prevent negatives
+      });
+
+      setJoined(false);
+      setEvent((prev) => ({
+        ...prev,
+        attendeesCount: Math.max((prev.attendeesCount ?? 1) - 1, 0),
+        attendees: (prev.attendees || []).filter((id) => id !== user.uid),
+      }));
+    }
+  } catch (error) {
+    console.error("Error updating event:", error);
+    alert("Something went wrong. Please try again.");
+  } finally {
+    setLoadingJoin(false);
+    setTimeout(() => setButtonDisabled(false), 2000);
+  }
+};
 
   const start = event.date
     ? new Date(`${event.date}T${(event.startTime || "09:00").padStart(5, "0")}`)
@@ -134,6 +204,33 @@ export default function EventDetails() {
             {event.description || "No description provided."}
           </p>
 
+          {/* Join/Leave button */}
+          <button
+            className={`btn w-100 mt-3 fw-semibold ${
+              joined ? "btn-outline-light" : "btn-info text-white"
+            }`}
+            onClick={toggleJoinEvent}
+            disabled={buttonDisabled || loadingJoin}
+            style={{
+              borderRadius: "8px",
+              transition: "all 0.3s",
+              opacity: buttonDisabled ? 0.7 : 1,
+              cursor: buttonDisabled ? "not-allowed" : "pointer",
+              minHeight: "48px",
+            }}
+          >
+            {loadingJoin ? (
+              <div
+                className="spinner-border spinner-border-sm text-light"
+                role="status"
+              />
+            ) : joined ? (
+              "Joined ✓ Leave Event"
+            ) : (
+              "Join this event"
+            )}
+          </button>
+
           {event.price > 0 && <EventPayment price={Number(event.price)} />}
         </div>
       </div>
@@ -141,12 +238,10 @@ export default function EventDetails() {
   );
 }
 
+/* ------------------------- MAP COMPONENT ------------------------- */
 function EventMap({ lat, lng }) {
-
   const { isLoaded } = useGoogleMaps();
-
-  if (!isLoaded) return <p>Loading map...</p>;
-
+  if (!isLoaded) return null;
   return (
     <GoogleMap
       mapContainerStyle={{
@@ -162,6 +257,7 @@ function EventMap({ lat, lng }) {
   );
 }
 
+/* ------------------------- PAYMENT COMPONENT ------------------------- */
 function EventPayment({ price }) {
   return (
     <div className="my-4">

@@ -56,6 +56,7 @@ function Stars({ eventId, value = 0 }) {
     setRating(newRating);
   };
 
+
   return (
     <div
       className="d-inline-flex align-items-center"
@@ -86,7 +87,7 @@ export function EventMap({ lat, lng }) {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
   });
 
-  if (!isLoaded) return <p>Loading map...</p>;
+  if (!isLoaded) return null;
 
   return (
     <GoogleMap
@@ -123,7 +124,20 @@ export default function EventCard({ event }) {
 
   const formattedTime =
     startISO?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) ?? "";
+  // Check if event is in the past
+  // Build event date using local time instead of UTC interpretation
+  const [year, month, day] = event.date.split("-").map(Number);
+  const [hours, minutes] = (event.startTime || "09:00").split(":").map(Number);
+  const eventTime = new Date(year, month - 1, day, hours, minutes); // local time
 
+  const now = new Date();
+  const isPastEvent = eventTime < now;
+
+  console.log("Event:", eventTime, "Now:", now, "isPast:", isPastEvent);
+
+
+
+  console.log(startISO, now, isPastEvent);
   // Add event to Google Calendar
   const handleAddToCalendar = () => {
     if (!startISO) return;
@@ -176,7 +190,14 @@ export default function EventCard({ event }) {
         {/* Title */}
         <h5 className="card-title mb-2 text-truncate" title={event.title}>
           {event.title}
+
         </h5>
+
+      {isPastEvent && (
+        <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle mb-2">
+          Past Event
+        </span>
+      )}
 
         {/* Date and Location */}
         <div className="small text-muted mb-2 d-flex flex-wrap gap-3">
