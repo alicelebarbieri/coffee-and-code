@@ -71,6 +71,3 @@ You can deploy that folder to:
 💼 Junior Full-Stack Developer  
 🌐 [LinkedIn](https://linkedin.com/in/alicele-barbieri)
 
----
-
-> Project Status: ✅ MVP Completed | 💡 Ready for client testing
