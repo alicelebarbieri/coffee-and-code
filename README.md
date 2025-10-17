@@ -3,11 +3,11 @@
 Welcome to **Coffee & Code**, a community-driven platform where developers can create, share, and join coding & coffee meetups.  
 This repository contains the **frontend source code** and supporting documentation for deployment, setup, and developer reference.
 
----
 🌐 Live Site
 
 You can explore the deployed version of Coffee & Code here:
 👉 https://coffeeandcode-events.netlify.app/
+
 ---
 
 ## 📁 Repository Structure
