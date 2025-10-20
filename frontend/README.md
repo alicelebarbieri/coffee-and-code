@@ -116,8 +116,6 @@ The app uses `environment="TEST"` by default — safe for development.
 - Ratings are saved per user and averaged in Firestore.  
 - Each component has its own `.css` file.  
 
-📘 Developer guide: [README_DEV.md](./README_DEV.md)
-
 ---
 
 ## 🧑‍💻 Author
